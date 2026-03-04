@@ -31,6 +31,21 @@ from .models import ChunkMetadata
 logger = logging.getLogger(__name__)
 
 
+def _extract_folder_prefix(
+    where: Optional[Dict[str, Any]],
+) -> tuple[Optional[Dict[str, Any]], Optional[str]]:
+    """Extract folder_prefix from a where dict (not a native ChromaDB operator).
+
+    Returns (cleaned_where, folder_prefix). The folder_prefix is applied as
+    post-filtering in Python since ChromaDB doesn't support string range queries.
+    """
+    if not where:
+        return where, None
+
+    prefix = where.pop("folder_prefix", None)
+    return (where or None), prefix
+
+
 class VaultService:
     """The central service for all vault-related business logic."""
 
@@ -89,7 +104,12 @@ class VaultService:
             content = f.read()
         return content
 
-    async def search_chunks(self, query: str, limit: int | None) -> List[ChunkMetadata]:
+    async def search_chunks(
+        self,
+        query: str,
+        limit: int | None,
+        where: Optional[Dict[str, Any]] = None,
+    ) -> List[ChunkMetadata]:
         """
         Performs a semantic search for relevant document chunks.
 
@@ -99,6 +119,7 @@ class VaultService:
         Args:
             query: The user's search query string.
             limit: The maximum number of results to return.
+            where: Optional ChromaDB where clause for metadata filtering.
 
         Returns:
             A list of ChunkMetadata objects, ranked by relevance.
@@ -106,23 +127,32 @@ class VaultService:
         final_limit = (
             limit if limit is not None else self.config.server.default_query_limit
         )
+        where, folder_prefix = _extract_folder_prefix(where)
+
+        # When folder_prefix is used, fetch extra results for post-filtering
+        fetch_limit = final_limit * 4 if folder_prefix else final_limit
 
         if not self.query_engine:
             logger.warning("Query engine not available, falling back to basic search.")
-            return self.vector_store.search(
+            results = self.vector_store.search(
                 query,
-                limit=final_limit,
+                limit=fetch_limit,
                 quality_threshold=self.config.indexing.quality_threshold,
+                where=where,
             )
+            return self._apply_folder_prefix(results, folder_prefix, final_limit)
 
         try:
             logger.info(f"Performing RAG query for: '{query}'")
-            # Use the asynchronous 'aquery' method instead of 'query'
+            # TODO: LlamaIndex query engine does not support ChromaDB where
+            # filtering. For now, filters only work with the basic search path.
+            # Since static retrieval mode bypasses the query engine, this is
+            # acceptable for the current configuration.
             response = await self.query_engine.aquery(query)
 
             sources = []
             if hasattr(response, "source_nodes"):
-                for node in response.source_nodes[:final_limit]:
+                for node in response.source_nodes[:fetch_limit]:
                     # Handle None values for character indices
                     start_idx = node.node.metadata.get("start_char_idx", 0)
                     end_idx = node.node.metadata.get("end_char_idx", 0)
@@ -137,18 +167,44 @@ class VaultService:
                         original_text=node.node.metadata.get("original_text"),
                     )
                     sources.append(chunk_metadata)
-            return sources
+            return self._apply_folder_prefix(sources, folder_prefix, final_limit)
 
         except Exception as e:
             logger.error(
                 f"Error during RAG query, falling back to basic search: {e}",
                 exc_info=True,
             )
-            return self.vector_store.search(
+            results = self.vector_store.search(
                 query,
-                limit=final_limit,
+                limit=fetch_limit,
                 quality_threshold=self.config.indexing.quality_threshold,
+                where=where,
             )
+            return self._apply_folder_prefix(results, folder_prefix, final_limit)
+
+    @staticmethod
+    def _apply_folder_prefix(
+        results: List[ChunkMetadata],
+        folder_prefix: Optional[str],
+        limit: int,
+    ) -> List[ChunkMetadata]:
+        """Post-filter results by folder prefix if specified."""
+        if not folder_prefix:
+            return results[:limit]
+        # Match the prefix exactly or as a parent folder (prefix + "/")
+        filtered = []
+        for chunk in results:
+            folder = chunk.file_path
+            # Extract vault-relative folder from absolute path
+            # folder metadata isn't on ChunkMetadata, so derive from file_path
+            parts = folder.split("/")
+            # Find vault root by looking for a known top-level folder
+            # Simpler: check if the path contains the prefix as a folder segment
+            if f"/{folder_prefix}/" in folder or folder.endswith(f"/{folder_prefix}"):
+                filtered.append(chunk)
+                if len(filtered) >= limit:
+                    break
+        return filtered
 
     async def _perform_indexing(self) -> int:
         """
@@ -212,7 +268,8 @@ class VaultService:
         # 1. Generate the Merkle tree for the current vault state
         logger.debug("Step 1: Generating new Merkle tree from vault state.")
         new_tree, new_manifest = self.state_tracker.generate_tree_from_vault(
-            prefix_filter=self.config.prefix_filter.allowed_prefixes
+            prefix_filter=self.config.prefix_filter.allowed_prefixes,
+            excluded_dirs=self.config.prefix_filter.excluded_dirs,
         )
         new_root_hash_bytes = new_tree.get_state() if new_tree.get_size() > 0 else None
         new_root_hash = new_root_hash_bytes.hex() if new_root_hash_bytes else None

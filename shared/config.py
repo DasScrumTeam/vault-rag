@@ -34,6 +34,9 @@ class PrefixFilterConfig(BaseModel):
     allowed_prefixes: List[str] = Field(
         default_factory=list, description="List of allowed filename prefixes"
     )
+    excluded_dirs: List[str] = Field(
+        default_factory=list, description="List of directory names to exclude from indexing"
+    )
 
 
 class IndexingConfig(BaseModel):

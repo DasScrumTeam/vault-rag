@@ -162,6 +162,68 @@ allowed_prefixes = [
 ]
 ```
 
+### Metadata Filtering (Query-Time)
+
+The `/query` endpoint accepts an optional `filter` parameter (a JSON object) that scopes search results by chunk metadata. This is independent of the `[prefix_filter]` section, which controls what gets indexed.
+
+#### Built-in filter fields
+
+Every indexed chunk automatically receives these metadata fields:
+
+| Field | Source | Type | Example value |
+| :--- | :--- | :--- | :--- |
+| `folder` | Vault-relative folder path | string | `"System/Rules/Arena"` |
+| `tags` | Frontmatter `tags` field | comma-separated string | `"book,definition"` |
+| `fm_<key>` | Any scalar frontmatter value | string | `fm_quartopublish`: `"true"` |
+
+Booleans in frontmatter are stored as lowercase strings (`"true"`, `"false"`). Lists are joined with commas.
+
+#### Filter operators
+
+Standard ChromaDB operators work on all fields:
+- `$eq` - exact match (default when value is a plain string)
+- `$ne` - not equal
+- `$in` - match any value in list
+- `$nin` - match none
+- `$and`, `$or` - combine multiple conditions
+
+Additionally, `folder_prefix` is a convenience operator (not native to ChromaDB) that matches a folder and all subfolders:
+
+```json
+{"folder_prefix": "System/Rules"}
+```
+
+This matches chunks in `System/Rules`, `System/Rules/Arena`, `System/Rules/Arena/Leadership Functions`, etc.
+
+#### Examples
+
+```json
+// Folder prefix filter
+{"query": "delegation", "filter": {"folder_prefix": "System/Rules"}}
+
+// Combined folder + frontmatter
+{"query": "delegation", "filter": {"folder_prefix": "System/Rules", "fm_quartopublish": "true"}}
+
+// Tag filter
+{"query": "agile", "filter": {"tags": "definition"}}
+
+// Multiple tags
+{"query": "agile", "filter": {"tags": {"$in": ["book", "definition"]}}}
+
+// Multiple folders with $or
+{"query": "scrum", "filter": {"$or": [{"folder": {"$eq": "System"}}, {"folder": {"$eq": "Interplay"}}]}}
+```
+
+#### Re-indexing after changes
+
+New `fm_*` fields only appear after re-indexing. To force a full re-index:
+
+```bash
+rm -rf ./chroma_db/
+rm -f ./data/index_state.json
+# Restart the server
+```
+
 ### `[indexing]` - Document Processing
 
 ```toml

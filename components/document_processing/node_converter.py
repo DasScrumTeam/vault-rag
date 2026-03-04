@@ -57,7 +57,13 @@ def convert_nodes_to_chunks(
             "start_char_idx": start_char_idx,
             "end_char_idx": end_char_idx,
             "document_id": document_id,
+            "tags": node.metadata.get("tags", ""),
+            "folder": node.metadata.get("folder", ""),
         }
+        # Pass through all fm_-prefixed frontmatter fields
+        for key, val in node.metadata.items():
+            if key.startswith("fm_"):
+                chunk[key] = str(val)
         chunks.append(chunk)
 
     return chunks

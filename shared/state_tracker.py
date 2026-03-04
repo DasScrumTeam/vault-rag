@@ -42,7 +42,9 @@ class StateTracker:
         return sha256.hexdigest()
 
     def generate_tree_from_vault(
-        self, prefix_filter: Optional[List[str]] = None
+        self,
+        prefix_filter: Optional[List[str]] = None,
+        excluded_dirs: Optional[List[str]] = None,
     ) -> Tuple[MerkleTree, Dict[str, str]]:
         """
         Scans the vault, hashes all files, and builds a Merkle tree.
@@ -50,6 +52,7 @@ class StateTracker:
         Args:
             prefix_filter: An optional list of directory prefixes to include. If None,
             all files are included.
+            excluded_dirs: An optional list of directory names to exclude from scanning.
 
         Returns:
             A tuple containing the generated MerkleTree and the manifest of
@@ -58,8 +61,29 @@ class StateTracker:
         manifest = {}
         tree = MerkleTree(hash_type="sha256")
 
-        for root, _, files in os.walk(self.vault_path):
+        # Directories to skip during vault scanning
+        skip_dirs = {"node_modules"}
+        if excluded_dirs:
+            skip_dirs.update(excluded_dirs)
+
+        for root, dirs, files in os.walk(self.vault_path):
+            # Prune hidden and excluded directories in-place to prevent descent
+            dirs[:] = [d for d in dirs if d not in skip_dirs and not d.startswith(".")]
+
             for file in files:
+                # Only index markdown files
+                if not file.endswith(".md"):
+                    continue
+
+                # Skip ALL-CAPS filenames (e.g. CLAUDE.md, README.md)
+                stem = file.rsplit(".", 1)[0]
+                if stem == stem.upper() and stem.isalpha():
+                    continue
+
+                # Skip files starting with __
+                if file.startswith("__"):
+                    continue
+
                 file_path = Path(root) / file
 
                 # Apply prefix filter if provided

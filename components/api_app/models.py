@@ -21,6 +21,15 @@ class QueryRequest(BaseModel):
         "when it's identical to text. "
         "(default true)",
     )
+    filter: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="ChromaDB where clause for metadata filtering. "
+        "Available fields: folder (vault-relative path), tags (comma-separated), "
+        "folder_prefix (matches folder and all subfolders). "
+        'Examples: {"folder_prefix": "System/Rules"}, '
+        '{"tags": "private-memory"}, '
+        '{"tags": {"$in": ["book", "definition"]}}',
+    )
 
 
 class QueryResponse(BaseModel):

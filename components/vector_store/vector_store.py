@@ -2,7 +2,7 @@
 
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Mapping, Union, cast
+from typing import Any, Dict, List, Mapping, Optional, Union, cast
 
 import chromadb
 from chromadb.config import Settings
@@ -109,30 +109,39 @@ class VectorStore:
         # Create metadata for each chunk
         metadatas: List[Mapping[str, Union[str, int, float, bool, None]]] = []
         for chunk in chunks:
-            metadatas.append(
-                {
-                    "file_path": str(chunk["file_path"]),
-                    "score": float(chunk["score"]),
-                    "text_length": len(chunk["text"]),
-                    # Character offset metadata
-                    "start_char_idx": int(chunk.get("start_char_idx", 0)),
-                    "end_char_idx": int(chunk.get("end_char_idx", 0)),
-                    "original_text": str(chunk.get("original_text", "")),
-                    "document_id": str(chunk.get("document_id", "")),
-                }
-            )
+            meta: Dict[str, Union[str, int, float, bool, None]] = {
+                "file_path": str(chunk["file_path"]),
+                "score": float(chunk["score"]),
+                "text_length": len(chunk["text"]),
+                # Character offset metadata
+                "start_char_idx": int(chunk.get("start_char_idx", 0)),
+                "end_char_idx": int(chunk.get("end_char_idx", 0)),
+                "original_text": str(chunk.get("original_text", "")),
+                "document_id": str(chunk.get("document_id", "")),
+                "tags": str(chunk.get("tags", "")),
+                "folder": str(chunk.get("folder", "")),
+            }
+            # Include all fm_-prefixed frontmatter fields
+            for key, val in chunk.items():
+                if key.startswith("fm_"):
+                    meta[key] = str(val)
+            metadatas.append(meta)
 
         try:
             # Generate embeddings
             embeddings = self.embedding_model.encode(texts)
 
-            # Add to ChromaDB
-            self.collection.add(
-                embeddings=embeddings,  # type: ignore[arg-type]
-                documents=texts,
-                metadatas=metadatas,
-                ids=chunk_ids,
-            )
+            # Add to ChromaDB in batches (ChromaDB max batch size is 5461)
+            batch_size = 5000
+            for i in range(0, len(chunks), batch_size):
+                end = min(i + batch_size, len(chunks))
+                self.collection.add(
+                    embeddings=embeddings[i:end],  # type: ignore[arg-type]
+                    documents=texts[i:end],
+                    metadatas=metadatas[i:end],
+                    ids=chunk_ids[i:end],
+                )
+                logger.debug(f"Added batch {i//batch_size + 1} ({end - i} chunks)")
 
             logger.debug(f"Added {len(chunks)} chunks to vector store")
 
@@ -141,7 +150,11 @@ class VectorStore:
             raise
 
     def search(
-        self, query: str, limit: int = 5, quality_threshold: float = 0.0
+        self,
+        query: str,
+        limit: int = 5,
+        quality_threshold: float = 0.0,
+        where: Optional[Dict[str, Any]] = None,
     ) -> List[ChunkMetadata]:
         """Search for relevant chunks using semantic similarity.
 
@@ -149,6 +162,7 @@ class VectorStore:
             query: The search query
             limit: Maximum number of results to return
             quality_threshold: Minimum quality score for results
+            where: Optional ChromaDB where clause for metadata filtering
 
         Returns:
             List of ChunkMetadata objects sorted by relevance
@@ -158,11 +172,14 @@ class VectorStore:
             query_embedding = self.embedding_model.encode([query])[0]
 
             # Search the collection
-            results = self.collection.query(
-                query_embeddings=[query_embedding],  # type: ignore[arg-type]
-                n_results=limit * 2,  # Get more results to filter by quality
-                include=["documents", "metadatas", "distances"],
-            )
+            query_kwargs: Dict[str, Any] = {
+                "query_embeddings": [query_embedding],
+                "n_results": limit * 2,  # Get more results to filter by quality
+                "include": ["documents", "metadatas", "distances"],
+            }
+            if where is not None:
+                query_kwargs["where"] = where
+            results = self.collection.query(**query_kwargs)
 
             # Process results
             chunks = []

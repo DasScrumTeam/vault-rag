@@ -25,6 +25,7 @@ https://github.com/user-attachments/assets/4ee2dbdd-3358-4b73-878a-c15e63cabe7c
 * 🔍 **Semantic Search**: Vector-based search across your document collections
 * ⚡ **Configurable Post-Processing**: Choose between agentic (AI-enhanced) or static (fast, deterministic) retrieval modes
 * 📁 **Prefix Filtering**: Only index files matching specific filename prefixes
+* 🏷️ **Metadata Filtering**: Filter search results by folder path, frontmatter tags, or any frontmatter field
 * 🔄 **Live Sync**: Automatically re-indexes files when they change on disk
 * 📊 **Quality Scoring**: Filters document chunks based on content quality
 * 🔌 **MCP Compliant**: Follows Model Context Protocol standards
@@ -214,7 +215,7 @@ Clean, RESTful endpoints for direct integration:
 
 - **`GET /files`** - List all indexed files
 - **`GET /document?file_path=...`** - Retrieve full document content
-- **`POST /query`** - Perform semantic search across documents
+- **`POST /query`** - Perform semantic search across documents (supports metadata filtering)
 - **`POST /reindex`** - Force a full re-index of the vault
 
 Interactive documentation available at: **[http://localhost:8000/docs](http://localhost:8000/docs)**
@@ -283,6 +284,46 @@ In the rare event that the advanced query engine fails and the system falls back
 | **What it Measures**| Intrinsic content quality | Similarity to your query |
 | **Primary Role** | Pre-filtering chunks | Ranking results |
 | **In API Response**| Only in fallback scenarios | **The default score shown** |
+
+## 🏷️ Metadata Filtering
+
+The `/query` endpoint supports an optional `filter` parameter to scope search results by metadata. This enables different AI agents to search only relevant subsets of your vault.
+
+### Available Filters
+
+| Filter | Description | Example |
+| :--- | :--- | :--- |
+| `folder_prefix` | Match folder path and all subfolders | `{"folder_prefix": "System/Rules"}` |
+| `folder` | Exact folder match (vault-relative path) | `{"folder": {"$eq": "System/Rules/Arena"}}` |
+| `tags` | Match frontmatter tags | `{"tags": "definition"}` |
+| `fm_<field>` | Match any frontmatter field | `{"fm_quartopublish": "true"}` |
+
+### Examples
+
+```json
+// Search only in System/Rules and subfolders
+{"query": "delegation", "filter": {"folder_prefix": "System/Rules"}}
+
+// Combine folder and frontmatter filters
+{"query": "delegation", "filter": {"folder_prefix": "System/Rules", "fm_quartopublish": "true"}}
+
+// Filter by tag
+{"query": "agile", "filter": {"tags": "definition"}}
+
+// Multiple tags
+{"query": "agile", "filter": {"tags": {"$in": ["book", "definition"]}}}
+```
+
+### How It Works
+
+During indexing, the server extracts metadata from each document:
+- **`folder`**: The vault-relative folder path (e.g. `System/Rules/Arena/Leadership Functions`)
+- **`tags`**: Frontmatter tags as a comma-separated string
+- **`fm_*`**: All scalar frontmatter values, prefixed with `fm_` (booleans normalized to `"true"`/`"false"`)
+
+ChromaDB native filters (`$eq`, `$ne`, `$in`, `$nin`) are passed through directly. The `folder_prefix` filter is a convenience operator that matches a folder and all its subfolders.
+
+**Note:** After adding or changing frontmatter fields, a full re-index is needed to update the stored metadata. Delete the ChromaDB directory and state file, then restart the server.
 
 ## 🎯 Use Cases
 

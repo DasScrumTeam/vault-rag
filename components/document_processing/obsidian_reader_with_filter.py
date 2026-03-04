@@ -2,15 +2,76 @@
 
 import logging
 import os
+import re
 from pathlib import Path
-from typing import Any, List, Optional, cast
+from typing import Any, Dict, List, Optional, cast
 
+import yaml
 from llama_index.core.schema import Document
 from llama_index.readers.obsidian import ObsidianReader
 from llama_index.readers.obsidian.base import is_hardlink
 from shared.config import Config
 
 logger = logging.getLogger(__name__)
+
+_FRONTMATTER_RE = re.compile(r"\A---\s*\n(.*?\n)---\s*\n", re.DOTALL)
+
+
+def extract_frontmatter_tags(content: str) -> str:
+    """Extract tags from YAML frontmatter and return as comma-separated string.
+
+    Handles both list and scalar forms. Returns "" on missing/invalid frontmatter.
+    """
+    fm = _parse_frontmatter(content)
+    if not fm:
+        return ""
+    raw = fm.get("tags")
+    if raw is None:
+        return ""
+    if isinstance(raw, list):
+        return ",".join(str(t) for t in raw if t)
+    return str(raw)
+
+
+def extract_frontmatter_metadata(content: str) -> Dict[str, str]:
+    """Extract all scalar frontmatter values as fm_-prefixed string dict.
+
+    Lists are joined with commas. Nested dicts/complex values are skipped.
+    Returns e.g. {"fm_quartopublish": "true", "fm_hugopublish": "true", "fm_tags": "book,definition"}.
+    """
+    fm = _parse_frontmatter(content)
+    if not fm:
+        return {}
+    result: Dict[str, str] = {}
+    for key, val in fm.items():
+        if isinstance(val, list):
+            # Join list items as comma-separated string
+            result[f"fm_{key}"] = ",".join(str(v) for v in val if v)
+        elif isinstance(val, bool):
+            result[f"fm_{key}"] = str(val).lower()
+        elif isinstance(val, (str, int, float)):
+            result[f"fm_{key}"] = str(val)
+        # Skip dicts and other complex types
+    return result
+
+
+def _parse_frontmatter(content: str) -> Optional[dict]:
+    """Parse YAML frontmatter block. Returns dict or None."""
+    m = _FRONTMATTER_RE.match(content)
+    if not m:
+        return None
+    try:
+        fm = yaml.safe_load(m.group(1))
+        return fm if isinstance(fm, dict) else None
+    except Exception:
+        return None
+
+
+def compute_folder_path(folder_name: str) -> str:
+    """Return the vault-relative folder path (e.g. 'System/Rules/Arena')."""
+    if not folder_name or folder_name == ".":
+        return ""
+    return folder_name
 
 
 class ObsidianReaderWithFilter(ObsidianReader):
@@ -115,6 +176,15 @@ class ObsidianReaderWithFilter(ObsidianReader):
                             doc.metadata["note_name"] = note_name
                             # Add file_path for compatibility with our system
                             doc.metadata["file_path"] = str(file_path_obj)
+                            doc.metadata["tags"] = extract_frontmatter_tags(
+                                raw_content
+                            )
+                            doc.metadata["folder"] = compute_folder_path(
+                                folder_name
+                            )
+                            doc.metadata.update(
+                                extract_frontmatter_metadata(raw_content)
+                            )
 
                             wikilinks = self._extract_wikilinks(doc.text)
                             doc.metadata["wikilinks"] = wikilinks

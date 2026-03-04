@@ -1,6 +1,7 @@
 """Document loader factory for creating appropriate readers based on configuration."""
 
 import logging
+from pathlib import Path
 from typing import List, Optional
 
 from llama_index.core import SimpleDirectoryReader
@@ -10,7 +11,12 @@ from llama_index.readers.joplin import JoplinReader
 from llama_index.readers.obsidian import ObsidianReader
 from shared.config import Config
 
-from .obsidian_reader_with_filter import ObsidianReaderWithFilter
+from .obsidian_reader_with_filter import (
+    ObsidianReaderWithFilter,
+    compute_folder_path,
+    extract_frontmatter_metadata,
+    extract_frontmatter_tags,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -90,6 +96,18 @@ def load_documents(
             logger.info(f"Loading {len(files_to_process)} specific files.")
             reader: BaseReader = SimpleDirectoryReader(input_files=files_to_process)
             documents = reader.load_data()
+            # Enrich with tags and folder metadata (SimpleDirectoryReader
+            # bypasses ObsidianReaderWithFilter which normally does this)
+            vault_path = config.get_vault_path()
+            for doc in documents:
+                doc.metadata["tags"] = extract_frontmatter_tags(doc.text)
+                fp = doc.metadata.get("file_path", "")
+                try:
+                    rel = str(Path(fp).parent.relative_to(vault_path))
+                except (ValueError, TypeError):
+                    rel = ""
+                doc.metadata["folder"] = compute_folder_path(rel)
+                doc.metadata.update(extract_frontmatter_metadata(doc.text))
             logger.debug(f"Successfully loaded {len(documents)} documents.")
             return documents
 
