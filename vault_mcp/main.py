@@ -21,15 +21,13 @@ from shared.initializer import (
 
 logger = logging.getLogger(__name__)
 
-def _wrap_stdio_stream(stream: TextIOWrapper) -> anyio.AsyncFile[str]:
-    return anyio.wrap_file(TextIOWrapper(stream.buffer, encoding="utf-8"))
-
-
-async def _run_mcp_stdio(service, protocol_stdout: TextIOWrapper) -> None:
+async def _run_mcp_stdio(service, stdout_buffer) -> None:
     mcp_server = create_mcp_server(service)
+    stdin_wrapper = anyio.wrap_file(TextIOWrapper(sys.stdin.buffer, encoding="utf-8"))
+    stdout_wrapper = anyio.wrap_file(TextIOWrapper(stdout_buffer, encoding="utf-8"))
     async with stdio_server(
-        stdin=_wrap_stdio_stream(sys.stdin),
-        stdout=_wrap_stdio_stream(protocol_stdout),
+        stdin=stdin_wrapper,
+        stdout=stdout_wrapper,
     ) as (read_stream, write_stream):
         await mcp_server.run(
             read_stream,
@@ -81,9 +79,11 @@ async def main() -> None:
         )
         args.serve_mcp = False
 
-    protocol_stdout = None
+    protocol_stdout_buffer = None
     if args.serve_mcp_stdio:
-        protocol_stdout = sys.stdout
+        # Capture the raw binary buffer BEFORE redirecting stdout to stderr,
+        # so MCP protocol output goes to the real stdout.
+        protocol_stdout_buffer = sys.stdout.buffer
         sys.stdout = sys.stderr
 
     config, service = await initialize_service_from_args(args)
@@ -119,9 +119,9 @@ async def main() -> None:
         logger.info("MCP Server will be served on http://%s:%s", config.server.host, port)
 
     if args.serve_mcp_stdio:
-        if protocol_stdout is None:
-            protocol_stdout = sys.__stdout__
-        server_tasks.append(_run_mcp_stdio(service, protocol_stdout))
+        if protocol_stdout_buffer is None:
+            protocol_stdout_buffer = sys.__stdout__.buffer
+        server_tasks.append(_run_mcp_stdio(service, protocol_stdout_buffer))
         logger.info("MCP stdio server started.")
 
     try:
@@ -130,8 +130,8 @@ async def main() -> None:
             return
         await asyncio.gather(*server_tasks)
     finally:
-        if protocol_stdout is not None:
-            sys.stdout = protocol_stdout
+        if protocol_stdout_buffer is not None:
+            sys.stdout = sys.__stdout__
         if watcher:
             logger.info("Stopping VaultWatcher...")
             watcher.stop()

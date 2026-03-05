@@ -1,5 +1,6 @@
 """Configuration management for the vault MCP server."""
 
+import fnmatch
 import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -36,6 +37,18 @@ class PrefixFilterConfig(BaseModel):
     )
     excluded_dirs: List[str] = Field(
         default_factory=list, description="List of directory names to exclude from indexing"
+    )
+    exclude_globs: List[str] = Field(
+        default_factory=list,
+        description="Glob patterns matched against vault-relative paths to exclude files",
+    )
+    include_globs: List[str] = Field(
+        default_factory=list,
+        description="Glob patterns that override exclude_globs (allowlist exceptions)",
+    )
+    file_extensions: List[str] = Field(
+        default_factory=lambda: [".md"],
+        description="File extensions to index (empty list = all files)",
     )
 
 
@@ -188,6 +201,30 @@ class Config(BaseModel):
             filename.startswith(prefix)
             for prefix in self.prefix_filter.allowed_prefixes
         )
+
+    def should_include_path(self, rel_path: str) -> bool:
+        """Check if a vault-relative path passes all filtering rules.
+
+        Evaluates exclude_globs/include_globs and file_extensions.
+        Does NOT check excluded_dirs (those are handled during directory traversal)
+        or allowed_prefixes (checked separately by should_include_file).
+        """
+        pf = self.prefix_filter
+
+        # Check file extension
+        if pf.file_extensions:
+            if not any(rel_path.endswith(ext) for ext in pf.file_extensions):
+                return False
+
+        # Check exclude globs (with include override)
+        if pf.exclude_globs:
+            excluded = any(fnmatch.fnmatch(rel_path, g) for g in pf.exclude_globs)
+            if excluded:
+                included = any(fnmatch.fnmatch(rel_path, g) for g in pf.include_globs)
+                if not included:
+                    return False
+
+        return True
 
 
 def load_config(

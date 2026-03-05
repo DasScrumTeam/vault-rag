@@ -270,6 +270,7 @@ class VaultService:
         new_tree, new_manifest = self.state_tracker.generate_tree_from_vault(
             prefix_filter=self.config.prefix_filter.allowed_prefixes,
             excluded_dirs=self.config.prefix_filter.excluded_dirs,
+            config=self.config,
         )
         new_root_hash_bytes = new_tree.get_state() if new_tree.get_size() > 0 else None
         new_root_hash = new_root_hash_bytes.hex() if new_root_hash_bytes else None

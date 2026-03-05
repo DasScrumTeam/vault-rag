@@ -1,3 +1,6 @@
+---
+ai-claude-session: 06eab965-ea1e-4ebe-8efd-56241d4d1f6b
+---
 # 🧾 Vault MCP - Obsidian Documentation Server
 
 <div align="center">

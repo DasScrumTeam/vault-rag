@@ -45,6 +45,7 @@ class StateTracker:
         self,
         prefix_filter: Optional[List[str]] = None,
         excluded_dirs: Optional[List[str]] = None,
+        config: Optional["Config"] = None,
     ) -> Tuple[MerkleTree, Dict[str, str]]:
         """
         Scans the vault, hashes all files, and builds a Merkle tree.
@@ -53,6 +54,7 @@ class StateTracker:
             prefix_filter: An optional list of directory prefixes to include. If None,
             all files are included.
             excluded_dirs: An optional list of directory names to exclude from scanning.
+            config: Optional Config object for advanced filtering (globs, extensions).
 
         Returns:
             A tuple containing the generated MerkleTree and the manifest of
@@ -66,17 +68,23 @@ class StateTracker:
         if excluded_dirs:
             skip_dirs.update(excluded_dirs)
 
+        # Determine file extension filter
+        file_extensions = [".md"]
+        if config and config.prefix_filter.file_extensions is not None:
+            file_extensions = config.prefix_filter.file_extensions
+
         for root, dirs, files in os.walk(self.vault_path):
             # Prune hidden and excluded directories in-place to prevent descent
             dirs[:] = [d for d in dirs if d not in skip_dirs and not d.startswith(".")]
 
             for file in files:
-                # Only index markdown files
-                if not file.endswith(".md"):
-                    continue
+                # Check file extension (empty list = all files)
+                if file_extensions:
+                    if not any(file.endswith(ext) for ext in file_extensions):
+                        continue
 
                 # Skip ALL-CAPS filenames (e.g. CLAUDE.md, README.md)
-                stem = file.rsplit(".", 1)[0]
+                stem = file.rsplit(".", 1)[0] if "." in file else file
                 if stem == stem.upper() and stem.isalpha():
                     continue
 
@@ -85,12 +93,16 @@ class StateTracker:
                     continue
 
                 file_path = Path(root) / file
+                rel_path = str(file_path.relative_to(self.vault_path))
 
                 # Apply prefix filter if provided
                 if prefix_filter and not any(
-                    str(file_path.relative_to(self.vault_path)).startswith(p)
-                    for p in prefix_filter
+                    rel_path.startswith(p) for p in prefix_filter
                 ):
+                    continue
+
+                # Apply glob-based filtering from config
+                if config and not config.should_include_path(rel_path):
                     continue
 
                 if file_path.is_file():

@@ -9,6 +9,7 @@ which can then be used by any number of independent server applications.
 """
 
 import argparse
+import asyncio
 import logging
 from typing import Any, Tuple
 
@@ -133,8 +134,21 @@ async def initialize_service_from_args(
     service = VaultService(
         config=config, vector_store=vector_store, query_engine=query_engine
     )
-    logger.info("Performing initial vault indexing...")
-    await service.reindex_vault()
+    # Run initial indexing in a background thread so the MCP server can
+    # respond to the handshake immediately. Document loading and PDF parsing
+    # are CPU-bound and would block the async event loop otherwise.
+    def _sync_reindex():
+        try:
+            logger.info("Background vault indexing started...")
+            loop = asyncio.new_event_loop()
+            loop.run_until_complete(service.reindex_vault())
+            loop.close()
+            logger.info("Background vault indexing completed.")
+        except Exception as e:
+            logger.error(f"Background indexing failed: {e}", exc_info=True)
+
+    import threading
+    threading.Thread(target=_sync_reindex, daemon=True).start()
 
     logger.info("Core services initialized successfully.")
     return config, service

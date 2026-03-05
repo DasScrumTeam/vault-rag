@@ -118,19 +118,37 @@ class ObsidianReaderWithFilter(ObsidianReader):
         processed_count = 0
         filtered_count = 0
 
+        # Build set of excluded directory names for pruning
+        skip_dirs = set(self.config.prefix_filter.excluded_dirs)
+
         for dirpath, dirnames, filenames in os.walk(self.input_dir, followlinks=False):
-            # Skip hidden directories.
-            dirnames[:] = [d for d in dirnames if not d.startswith(".")]
+            # Skip hidden and excluded directories.
+            dirnames[:] = [
+                d for d in dirnames
+                if not d.startswith(".") and d not in skip_dirs
+            ]
             for filename in filenames:
-                if filename.endswith(".md"):
-                    processed_count += 1
-                    # Apply prefix filtering here - this is the key change!
-                    if not self.config.should_include_file(filename):
-                        filtered_count += 1
-                        logger.debug(f"Filtered out: {filename}")
-                        continue  # Skip files that don't match the prefix filter
-                    else:
-                        logger.debug(f"Including: {filename}")
+                # Compute vault-relative path for filtering
+                filepath = os.path.join(dirpath, filename)
+                try:
+                    rel_path = str(Path(filepath).relative_to(input_dir_abs))
+                except ValueError:
+                    continue
+
+                # Apply path-level filters (extensions, globs)
+                if not self.config.should_include_path(rel_path):
+                    filtered_count += 1
+                    continue
+
+                processed_count += 1
+
+                # Apply filename prefix filtering
+                if not self.config.should_include_file(filename):
+                    filtered_count += 1
+                    logger.debug(f"Filtered out: {filename}")
+                    continue
+                else:
+                    logger.debug(f"Including: {filename}")
 
                     filepath = os.path.join(dirpath, filename)
                     file_path_obj = Path(filepath).resolve()
