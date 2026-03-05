@@ -1,6 +1,6 @@
 # Analysis of Version v0.3.0 (Commit: `9c395af`)
 
-This document analyzes the changes introduced in version `v0.3.0` of the Vault MCP server. This is a massive, feature-rich release that delivers on the architectural promises of the previous versions and significantly expands the application's capabilities.
+This document analyzes the changes introduced in version `v0.3.0` of the Vault RAG server. This is a massive, feature-rich release that delivers on the architectural promises of the previous versions and significantly expands the application's capabilities.
 
 ## 1. State of the Project
 

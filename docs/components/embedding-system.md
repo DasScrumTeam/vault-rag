@@ -2,7 +2,7 @@
 
 ## Overview
 
-The embedding system component provides a flexible, pluggable architecture for managing document embeddings in the vault-mcp server. It supports multiple embedding providers, custom wrapper implementations, and specialized handling for instruction-tuned models.
+The embedding system component provides a flexible, pluggable architecture for managing document embeddings in the vault-rag server. It supports multiple embedding providers, custom wrapper implementations, and specialized handling for instruction-tuned models.
 
 ## Architecture
 
@@ -124,7 +124,7 @@ wrapper_class = "plugins.custom_wrapper.CustomWrapper"
 #### Plugin Implementation
 ```python
 from components.embedding_system import OpenAIEndpointEmbedding
-from vault_mcp.config import EmbeddingModelConfig
+from vault_rag.config import EmbeddingModelConfig
 
 class CustomWrapper(OpenAIEndpointEmbedding):
     def __init__(self, config: EmbeddingModelConfig, **kwargs):

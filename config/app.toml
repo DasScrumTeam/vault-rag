@@ -1,7 +1,7 @@
 [paths]
 vault_dir = "/Users/peterbeck/Obsidian/AME3"
-database_dir = "/Users/peterbeck/.local/share/vault-mcp/chroma_db"
-data_dir = "/Users/peterbeck/.local/share/vault-mcp/data"
+database_dir = "/Users/peterbeck/.local/share/vault-rag/chroma_db"
+data_dir = "/Users/peterbeck/.local/share/vault-rag/data"
 type = "Obsidian"
 
 [prefix_filter]

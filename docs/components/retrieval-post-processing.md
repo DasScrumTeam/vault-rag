@@ -1,6 +1,6 @@
 # Retrieval Post-processing
 
-This document describes the retrieval post-processing mechanisms within the `vault-mcp` server, which enhance the relevance and quality of retrieved document chunks. It covers both the `agentic` (AI-enhanced) and `static` (deterministic) retrieval modes, leveraging LlamaIndex for efficient context handling.
+This document describes the retrieval post-processing mechanisms within the `vault-rag` server, which enhance the relevance and quality of retrieved document chunks. It covers both the `agentic` (AI-enhanced) and `static` (deterministic) retrieval modes, leveraging LlamaIndex for efficient context handling.
 
 ## Purpose
 
@@ -48,7 +48,7 @@ The `Agentic Retriever` is pivotal to server operations, providing the primary r
 
 ## Conclusion
 
-The `Agentic Retriever` component embodies the core intelligence of the vault-mcp server, offering sophisticated RAG features. Its design enables seamless integration with other system components, maintaining code modularity, readability, and extensibility.
+The `Agentic Retriever` component embodies the core intelligence of the vault-rag server, offering sophisticated RAG features. Its design enables seamless integration with other system components, maintaining code modularity, readability, and extensibility.
 
 ---
 

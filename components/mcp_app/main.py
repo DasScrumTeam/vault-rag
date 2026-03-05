@@ -21,12 +21,12 @@ def create_mcp_app(service: VaultService) -> FastAPI:
     # 2. Create the MCP wrapper, filtering for agent-relevant tools.
     mcp = FastApiMCP(
         source_app,
-        name="Vault MCP",
+        name="Vault RAG",
         include_tags=["search", "documents"],
     )
 
     # 3. Create a new, clean FastAPI app for the MCP server.
-    mcp_app = FastAPI(title="Vault MCP Server (Compliant)")
+    mcp_app = FastAPI(title="Vault RAG Server")
 
     # 4. Mount the MCP routes onto the new app.
     mcp.mount_http(mcp_app)
@@ -47,7 +47,7 @@ def create_mcp_server(service: VaultService) -> Server:
     source_app = create_source_app(service)
     mcp = FastApiMCP(
         source_app,
-        name="Vault MCP",
+        name="Vault RAG",
         include_tags=["search", "documents"],
     )
     return mcp.server

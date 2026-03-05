@@ -1,7 +1,7 @@
 """Agentic Retriever Component
 
 This component implements the core agentic retrieval-augmented generation (RAG)
-functionality for the vault-mcp server. It orchestrates document search, chunk
+functionality for the vault-rag server. It orchestrates document search, chunk
 refinement, and answer generation using LlamaIndex and agent-based workflows.
 
 Key Classes:

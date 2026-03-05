@@ -64,7 +64,7 @@ quality_threshold = 0.75  # Filter chunks by quality during updates
 ### Manual Watcher Control
 ```python
 from components.file_watcher.file_watcher import VaultWatcher
-from vault_mcp.config import load_config
+from vault_rag.config import load_config
 
 config = load_config()
 loader = DocumentLoader()
@@ -84,7 +84,7 @@ watcher.stop()
 
 ### Integration with Server Lifecycle
 ```python
-# Automatic integration (from vault_mcp/main.py)
+# Automatic integration (from vault_rag/main.py)
 if config.watcher.enabled:
     file_watcher = VaultWatcher(
         config=config,

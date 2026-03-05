@@ -85,7 +85,7 @@ enable_quality_filter = true # Enable/disable quality filtering
 ### Multi-Source Document Loading
 ```python
 from components.document_processing import load_documents, DocumentLoaderError
-from vault_mcp.config import load_config
+from vault_rag.config import load_config
 
 config = load_config()
 
@@ -128,7 +128,7 @@ print(f"Enclosing sections: {sections}")
 ### Reader Type Configuration
 ```python
 from components.document_processing import create_reader
-from vault_mcp.config import Config, PathsConfig
+from vault_rag.config import Config, PathsConfig
 
 # Obsidian vault
 config = Config(paths=PathsConfig(vault_dir="/path/to/vault", type="Obsidian"))

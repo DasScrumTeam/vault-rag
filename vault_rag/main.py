@@ -1,4 +1,4 @@
-# vault_mcp/main.py
+# vault_rag/main.py
 
 import asyncio
 import logging

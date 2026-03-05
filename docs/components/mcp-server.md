@@ -2,7 +2,7 @@
 
 ## Purpose and Scope
 
-The MCP Server component provides the HTTP/REST API interface for the vault-mcp system. It implements the Model Context Protocol (MCP) endpoints and manages the server lifecycle, including startup initialization and graceful shutdown. This component orchestrates interactions between the file watcher and vector store components.
+The MCP Server component provides the HTTP/REST API interface for the vault-rag system. It implements the Model Context Protocol (MCP) endpoints and manages the server lifecycle, including startup initialization and graceful shutdown. This component orchestrates interactions between the file watcher and vector store components.
 
 ## Key Interfaces and APIs
 

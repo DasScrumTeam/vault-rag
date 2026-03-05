@@ -1,6 +1,6 @@
 # Analysis of Version v0.2.1 (Commit: `53c4422`)
 
-This document analyzes the changes introduced in version `v0.2.1` of the Vault MCP server. This version represents a massive leap in functionality and architectural complexity compared to `v0.1.0`.
+This document analyzes the changes introduced in version `v0.2.1` of the Vault RAG server. This version represents a massive leap in functionality and architectural complexity compared to `v0.1.0`.
 
 ## 1. State of the Project
 

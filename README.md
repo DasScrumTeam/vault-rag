@@ -1,7 +1,7 @@
 ---
 ai-claude-session: 06eab965-ea1e-4ebe-8efd-56241d4d1f6b
 ---
-# 🧾 Vault MCP - Obsidian Documentation Server
+# 🧾 Vault RAG - Obsidian Documentation Server
 
 <div align="center">
     <img src="docs/.assets/Gemini_Generated_Image_3uqaf63uqaf63uqa.png" alt="A friendly, cartoon capybara wearing a green librarian's visor, is shown behind a counter, looking out from a vault built into a wall of bookshelves. The capybara has its hands on a stack of colorful books. The style is a simplified, cute anime style with clean lines and a warm color palette." width="66%">
@@ -67,7 +67,7 @@ Clone the repository and install the required dependencies using `uv`.
 ```bash
 # Clone the repository
 git clone <repository-url>
-cd vault-mcp
+cd vault-rag
 
 # Create and activate a virtual environment
 uv venv
@@ -104,7 +104,7 @@ That's it! The default settings are configured to use a local embedding model an
 Use the installed command-line script to start the server:
 
 ```bash
-vault-mcp
+vault-rag
 ```
 
 The server will start and begin indexing the documents in the directory you configured. You will see log messages indicating its progress.
@@ -117,7 +117,7 @@ Once the server is running:
 2. You should see the interactive FastAPI documentation for your custom API.
 3. Try the `GET /files` endpoint and click "Execute".
 
-If you see a JSON response listing the Markdown files from your folder, congratulations! Your Vault MCP server is running correctly.
+If you see a JSON response listing the Markdown files from your folder, congratulations! Your Vault RAG server is running correctly.
 
 ## 🏗️ Architecture
 
@@ -369,7 +369,7 @@ Increase log verbosity for debugging:
 
 ```bash
 export LOG_LEVEL=DEBUG
-vault-mcp
+vault-rag
 ```
 
 ## 📊 Performance
@@ -388,8 +388,8 @@ We welcome contributions! Whether you're fixing bugs, adding features, improving
 
 ```bash
 # Fork and clone the repository
-git clone https://github.com/YOUR_USERNAME/vault-mcp.git
-cd vault-mcp
+git clone https://github.com/YOUR_USERNAME/vault-rag.git
+cd vault-rag
 
 # Set up development environment
 uv venv && source .venv/bin/activate
@@ -399,7 +399,7 @@ uv sync --extra dev
 pytest
 
 # Format code
-black components/ shared/ vault_mcp/
+black components/ shared/ vault_rag/
 ruff check --fix
 ```
 
@@ -407,7 +407,6 @@ For detailed contribution guidelines, development setup, testing procedures, and
 
 ## Future
 
-- Rename project: vault-mcp is a RAG server, name should reflect that
 - Increase default chunk_size 4x (current 1024 produces many small, low-value chunks)
 
 ## 📄 License

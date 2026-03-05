@@ -1,10 +1,10 @@
 # Analysis of Version v0.1.0 (Commit: `cf035cd`)
 
-This document provides an analysis of the initial version of the Vault MCP server, based on the state of the repository at commit `cf035cd`, which corresponds to version `0.1.0`.
+This document provides an analysis of the initial version of the Vault RAG server, based on the state of the repository at commit `cf035cd`, which corresponds to version `0.1.0`.
 
 ## 1. State of the Project
 
-The initial version of the project is a functional, albeit basic, semantic search server for Obsidian vaults. It is named "Vault MCP" and is designed to be compliant with a "Model Context Protocol (MCP)".
+The initial version of the project is a functional, albeit basic, semantic search server for Obsidian vaults. It is named "Vault RAG" and is designed to be compliant with a "Model Context Protocol (MCP)".
 
 The core functionalities at this stage are:
 - **Indexing:** It can scan a directory of Markdown files (`.md`), process them, and index them in a vector store.
@@ -20,7 +20,7 @@ The project is built on a modern Python stack, including:
 - **`uv`** for package management.
 - **`mistune`** for Markdown parsing.
 
-The project structure is well-organized from the beginning, with a clear separation of concerns into `components` (server, vector store, file watcher) and a `vault_mcp` directory for shared utilities.
+The project structure is well-organized from the beginning, with a clear separation of concerns into `components` (server, vector store, file watcher) and a `vault_rag` directory for shared utilities.
 
 ## 2. What it Was Doing Right
 

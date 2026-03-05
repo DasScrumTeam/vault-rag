@@ -42,7 +42,7 @@ The Vector Store component manages document embeddings and provides semantic sea
 Configuration is handled internally with reasonable defaults, but the `VectorStore` now requires an `embedding_config` object during initialization:
 
 ```python
-from vault_mcp.config import EmbeddingModelConfig
+from vault_rag.config import EmbeddingModelConfig
 
 # Example configuration (this would typically come from app.toml)
 embedding_config = EmbeddingModelConfig(
@@ -68,7 +68,7 @@ quality_threshold = 0.75  # Minimum score for search results
 ### Basic Operations
 ```python
 from components.vector_store.vector_store import VectorStore
-from vault_mcp.config import EmbeddingModelConfig
+from vault_rag.config import EmbeddingModelConfig
 
 # Initialize vector store with an embedding configuration
 embedding_config = EmbeddingModelConfig(

@@ -4,10 +4,10 @@ import asyncio
 from unittest.mock import MagicMock, patch
 
 import pytest
-from vault_mcp import main
+from vault_rag import main
 
 
-@patch("vault_mcp.main.asyncio.run")
+@patch("vault_rag.main.asyncio.run")
 def test_run(mock_asyncio_run):
     """Test that the run function calls asyncio.run with main."""
     main.run()
@@ -15,9 +15,9 @@ def test_run(mock_asyncio_run):
 
 
 @pytest.mark.asyncio
-@patch("vault_mcp.main.uvicorn.Server")
-@patch("vault_mcp.main.initialize_service_from_args")
-@patch("vault_mcp.main.create_arg_parser")
+@patch("vault_rag.main.uvicorn.Server")
+@patch("vault_rag.main.initialize_service_from_args")
+@patch("vault_rag.main.create_arg_parser")
 async def test_main_runs_both_servers_by_default(
     mock_create_arg_parser,
     mock_initialize_service,

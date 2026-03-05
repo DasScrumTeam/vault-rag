@@ -3,10 +3,10 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "vault-mcp"
+name = "vault-rag"
 version = "0.5.0"
 description = "MCP-compliant Obsidian documentation server with RAG and live sync"
-authors = [{name = "Vault MCP Team", email = "team@vault-mcp.dev"}]
+authors = [{name = "Vault RAG Team", email = "team@vault-rag.dev"}]
 license = {text = "MIT"}
 readme = "README.md"
 requires-python = ">=3.11"
@@ -53,7 +53,7 @@ dev = [
 
 
 [project.scripts]
-vault-mcp = "vault_mcp.main:run"
+vault-rag = "vault_rag.main:run"
 
 #-- Tooling --#
 
@@ -102,5 +102,5 @@ timeout = 30
 timeout_method = "thread"
 testpaths = ["tests", "components/*/tests"]
 python_files = ["test_*.py"]
-addopts = "--cov=vault_mcp --cov=components --cov-report=term-missing"
+addopts = "--cov=vault_rag --cov=components --cov-report=term-missing"
 asyncio_default_fixture_loop_scope = "function"

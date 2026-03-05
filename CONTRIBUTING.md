@@ -1,6 +1,6 @@
-# Contributing to Vault MCP
+# Contributing to Vault RAG
 
-Thank you for your interest in contributing to Vault MCP! We welcome contributions from everyone, whether you're fixing bugs, adding features, improving documentation, or helping with testing.
+Thank you for your interest in contributing to Vault RAG! We welcome contributions from everyone, whether you're fixing bugs, adding features, improving documentation, or helping with testing.
 
 ## Getting Started
 
@@ -24,8 +24,8 @@ brew install uv
 1. **Fork and Clone**
    ```bash
    # Fork the repository on GitHub first, then:
-   git clone https://github.com/YOUR_USERNAME/vault-mcp.git
-   cd vault-mcp
+   git clone https://github.com/YOUR_USERNAME/vault-rag.git
+   cd vault-rag
    ```
 
 2. **Set Up Development Environment**
@@ -46,7 +46,7 @@ brew install uv
    pytest
 
    # Start the server to test functionality
-   vault-mcp
+   vault-rag
    ```
 
 ## How to Contribute
@@ -102,14 +102,14 @@ brew install uv
 4. **Code Quality Checks**
    ```bash
    # Format code
-   black components/ shared/ vault_mcp/
-   ruff check --fix components/ shared/ vault_mcp/
+   black components/ shared/ vault_rag/
+   ruff check --fix components/ shared/ vault_rag/
 
    # Type checking
-   mypy components/ shared/ vault_mcp/
+   mypy components/ shared/ vault_rag/
 
    # Security scanning
-   bandit -c pyproject.toml -r components/ shared/ vault_mcp/
+   bandit -c pyproject.toml -r components/ shared/ vault_rag/
    ```
 
 5. **Commit Your Changes**
@@ -131,7 +131,7 @@ brew install uv
 Understanding the project structure will help you contribute effectively:
 
 ```
-vault-mcp/
+vault-rag/
 ├── components/              # Discrete system components
 │   ├── api_app/             # Standard REST API server
 │   ├── mcp_app/             # MCP-compliant server wrapper
@@ -145,7 +145,7 @@ vault-mcp/
 │   ├── config.py            # Configuration management
 │   ├── initializer.py       # Service initialization
 │   └── tests/               # Shared component tests
-├── vault_mcp/               # Main application entry point
+├── vault_rag/               # Main application entry point
 │   └── main.py              # CLI and server orchestration
 ├── tests/                   # Root-level integration tests
 ├── config/                  # Configuration files
@@ -270,7 +270,7 @@ git commit -m "docs(config): add examples for Joplin integration"
    pytest
 
    # Run tests with coverage
-   pytest --cov=components --cov=shared --cov=vault_mcp
+   pytest --cov=components --cov=shared --cov=vault_rag
 
    # Run specific test files
    pytest tests/test_vault_service.py
@@ -288,7 +288,7 @@ git commit -m "docs(config): add examples for Joplin integration"
 3. **Manual Testing**
    ```bash
    # Start the server
-   vault-mcp
+   vault-rag
 
    # Test API endpoints
    curl http://localhost:8000/files
@@ -301,7 +301,7 @@ git commit -m "docs(config): add examples for Joplin integration"
 
 ```bash
 # Profile memory usage
-python -m memory_profiler vault_mcp/main.py
+python -m memory_profiler vault_rag/main.py
 
 # Load testing (if applicable)
 ab -n 100 -c 10 http://localhost:8000/files
@@ -360,7 +360,7 @@ Include the following information:
 ## Environment
 - OS: [e.g., macOS 14.0, Ubuntu 22.04, Windows 11]
 - Python version: [e.g., 3.11.5]
-- Vault MCP version: [e.g., 0.4.0]
+- Vault RAG version: [e.g., 0.4.0]
 - Document source: [Standard/Obsidian/Joplin]
 
 ## Describe the Bug
@@ -411,13 +411,13 @@ Screenshots, mockups, or additional information.
 
 ```bash
 # Development server with auto-reload
-vault-mcp --serve-api  # API only for testing
+vault-rag --serve-api  # API only for testing
 
 # Run with debug logging
-export LOG_LEVEL=DEBUG && vault-mcp
+export LOG_LEVEL=DEBUG && vault-rag
 
 # Profile startup time
-time vault-mcp --serve-api
+time vault-rag --serve-api
 
 # Check dependency security
 uv pip audit
@@ -479,7 +479,7 @@ Contributors will be recognized in:
 
 ## License
 
-By contributing to Vault MCP, you agree that your contributions will be licensed under the MIT License.
+By contributing to Vault RAG, you agree that your contributions will be licensed under the MIT License.
 
 ## Questions?
 
@@ -488,4 +488,4 @@ If you have questions about contributing, feel free to:
 - Start a discussion in GitHub Discussions
 - Review existing issues and discussions for similar questions
 
-Thank you for helping make Vault MCP better! 🚀
+Thank you for helping make Vault RAG better! 🚀

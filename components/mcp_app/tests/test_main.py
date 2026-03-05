@@ -59,7 +59,7 @@ def test_mcp_app_creation(test_service):
     """Test that the MCP app can be created successfully."""
     app = create_mcp_app(test_service)
     assert app is not None
-    assert app.title == "Vault MCP Server (Compliant)"
+    assert app.title == "Vault RAG Server"
 
 
 def test_mcp_introspection_endpoint(mcp_client):

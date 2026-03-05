@@ -1,6 +1,6 @@
 # Analysis of Version v0.5.0
 
-This document analyzes the changes introduced in version `v0.5.0` of the Vault MCP server. This version focuses on improving user experience through automated database management and expanding integration options with stdio support.
+This document analyzes the changes introduced in version `v0.5.0` of the Vault RAG server. This version focuses on improving user experience through automated database management and expanding integration options with stdio support.
 
 ## 1. State of the Project
 
@@ -27,4 +27,4 @@ The key changes in this version are:
 
 - **Incremental Migration:** Currently, the entire collection is wiped on dimension mismatch. If ChromaDB supports multiple collections or if we wanted to support "side-by-side" models, a more complex migration strategy would be needed. However, for a single-vault use case, the current "reset and re-index" approach is appropriate and robust.
 
-In summary, `v0.5.0` makes the Vault MCP server much more resilient and easier to integrate. It removes a significant barrier for users who experiment with different embedding models and opens the door for seamless usage within agent-managed environments through stdio support.
+In summary, `v0.5.0` makes the Vault RAG server much more resilient and easier to integrate. It removes a significant barrier for users who experiment with different embedding models and opens the door for seamless usage within agent-managed environments through stdio support.

@@ -49,7 +49,7 @@ generation_model = "required"
 Using the configured mode, create a query engine to process RAG queries:
 
 ```python
-from vault_mcp.config import Config
+from vault_rag.config import Config
 from components.agentic_retriever import create_agentic_query_engine
 
 # Configure retrieval mode

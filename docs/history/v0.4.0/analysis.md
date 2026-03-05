@@ -1,6 +1,6 @@
 # Analysis of Version v0.4.0 (Commit: `2480a8e`)
 
-This document analyzes the changes introduced in version `v0.4.0` of the Vault MCP server. This version represents a major architectural refactoring that significantly improves the modularity, extensibility, and robustness of the application.
+This document analyzes the changes introduced in version `v0.4.0` of the Vault RAG server. This version represents a major architectural refactoring that significantly improves the modularity, extensibility, and robustness of the application.
 
 ## 1. State of the Project
 
@@ -32,4 +32,4 @@ With this release, the project is in a very strong state architecturally. The ma
 The only significant missing piece from the original vision is the final generation step of the RAG pipeline.
 - **Answer Synthesis Module:** A final component is needed to take the list of source chunks from the retriever and use an LLM to generate a single, coherent answer to the user's query. The architecture is now perfectly set up to add this feature.
 
-In summary, `v0.4.0` is a landmark release that establishes a mature, robust, and highly extensible architecture for the Vault MCP server. It successfully decouples the core logic from the web interfaces and provides powerful new features like the pluggable embedding system. While the final answer generation step is still missing, this version provides a solid and well-documented foundation for this and any other future enhancements. The project has evolved from a simple server into a sophisticated and feature-rich RAG platform.
+In summary, `v0.4.0` is a landmark release that establishes a mature, robust, and highly extensible architecture for the Vault RAG server. It successfully decouples the core logic from the web interfaces and provides powerful new features like the pluggable embedding system. While the final answer generation step is still missing, this version provides a solid and well-documented foundation for this and any other future enhancements. The project has evolved from a simple server into a sophisticated and feature-rich RAG platform.
