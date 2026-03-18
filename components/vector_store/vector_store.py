@@ -1,6 +1,7 @@
 """Vector store management for document embeddings and semantic search."""
 
 import logging
+import threading
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Union, cast
 
@@ -32,6 +33,11 @@ class VectorStore:
         self.persist_directory = Path(persist_directory)
         self.collection_name = collection_name
         self.embedding_config = embedding_config
+
+        # Lock to serialize all ChromaDB operations.
+        # ChromaDB 1.x Rust bindings are not thread-safe for concurrent access
+        # from multiple Python threads, causing SIGSEGV crashes.
+        self._lock = threading.Lock()
 
         # Ensure the persist directory exists
         self.persist_directory.mkdir(parents=True, exist_ok=True)
@@ -128,20 +134,21 @@ class VectorStore:
             metadatas.append(meta)
 
         try:
-            # Generate embeddings
+            # Generate embeddings (CPU/network bound, safe outside lock)
             embeddings = self.embedding_model.encode(texts)
 
             # Add to ChromaDB in batches (ChromaDB max batch size is 5461)
             batch_size = 5000
-            for i in range(0, len(chunks), batch_size):
-                end = min(i + batch_size, len(chunks))
-                self.collection.add(
-                    embeddings=embeddings[i:end],  # type: ignore[arg-type]
-                    documents=texts[i:end],
-                    metadatas=metadatas[i:end],
-                    ids=chunk_ids[i:end],
-                )
-                logger.debug(f"Added batch {i//batch_size + 1} ({end - i} chunks)")
+            with self._lock:
+                for i in range(0, len(chunks), batch_size):
+                    end = min(i + batch_size, len(chunks))
+                    self.collection.add(
+                        embeddings=embeddings[i:end],  # type: ignore[arg-type]
+                        documents=texts[i:end],
+                        metadatas=metadatas[i:end],
+                        ids=chunk_ids[i:end],
+                    )
+                    logger.debug(f"Added batch {i//batch_size + 1} ({end - i} chunks)")
 
             logger.debug(f"Added {len(chunks)} chunks to vector store")
 
@@ -168,7 +175,7 @@ class VectorStore:
             List of ChunkMetadata objects sorted by relevance
         """
         try:
-            # Generate query embedding
+            # Generate query embedding (CPU/network bound, safe outside lock)
             query_embedding = self.embedding_model.encode([query])[0]
 
             # Search the collection
@@ -179,7 +186,8 @@ class VectorStore:
             }
             if where is not None:
                 query_kwargs["where"] = where
-            results = self.collection.query(**query_kwargs)
+            with self._lock:
+                results = self.collection.query(**query_kwargs)
 
             # Process results
             chunks = []
@@ -249,15 +257,16 @@ class VectorStore:
             file_path: Path of the file whose chunks should be removed
         """
         try:
-            # Get all chunks from this file
-            results = self.collection.get(
-                where={"file_path": file_path}, include=["metadatas"]
-            )
+            with self._lock:
+                # Get all chunks from this file
+                results = self.collection.get(
+                    where={"file_path": file_path}, include=["metadatas"]
+                )
 
-            if results["ids"]:
-                # Delete the chunks
-                self.collection.delete(ids=results["ids"])
-                logger.info(f"Removed {len(results['ids'])} chunks from {file_path}")
+                if results["ids"]:
+                    # Delete the chunks
+                    self.collection.delete(ids=results["ids"])
+                    logger.info(f"Removed {len(results['ids'])} chunks from {file_path}")
 
         except Exception as e:
             logger.error(f"Error removing chunks for {file_path}: {e}")
@@ -269,8 +278,9 @@ class VectorStore:
             List of unique file paths
         """
         try:
-            # Get all documents with metadata
-            results = self.collection.get(include=["metadatas"])
+            with self._lock:
+                # Get all documents with metadata
+                results = self.collection.get(include=["metadatas"])
 
             if results["metadatas"]:
                 file_paths = {
@@ -293,7 +303,8 @@ class VectorStore:
             Total number of chunks
         """
         try:
-            return self.collection.count()
+            with self._lock:
+                return self.collection.count()
         except Exception as e:
             logger.error(f"Error getting chunk count: {e}")
             return 0
@@ -301,12 +312,13 @@ class VectorStore:
     def clear_all(self) -> None:
         """Clear all data from the vector store."""
         try:
-            # Delete the collection and recreate it
-            self.client.delete_collection(name=self.collection_name)
-            self.collection = self.client.create_collection(
-                name=self.collection_name,
-                metadata={"description": "Obsidian vault document chunks"},
-            )
+            with self._lock:
+                # Delete the collection and recreate it
+                self.client.delete_collection(name=self.collection_name)
+                self.collection = self.client.create_collection(
+                    name=self.collection_name,
+                    metadata={"description": "Obsidian vault document chunks"},
+                )
             logger.info("Cleared all data from vector store")
 
         except Exception as e:
