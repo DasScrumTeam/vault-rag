@@ -72,6 +72,18 @@ class VaultEventHandler(FileSystemEventHandler):
 
     def _debounce_worker(self) -> None:
         """Worker thread that processes debounced operations."""
+        # Wait for the vector store to be ready (initial reindex complete)
+        # before processing any file events.  This prevents concurrent
+        # ChromaDB access during the heavy initial indexing phase, which
+        # triggers SIGSEGV in the Rust bindings.
+        if not self.vector_store.wait_until_ready(timeout=600):
+            logger.warning(
+                "VectorStore did not become ready within timeout; "
+                "starting debounce worker anyway."
+            )
+        else:
+            logger.info("VectorStore ready, file watcher debounce worker active.")
+
         while not self._stop_debounce.is_set():
             try:
                 current_time = time.time()

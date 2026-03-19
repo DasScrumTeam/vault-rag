@@ -39,14 +39,23 @@ class VectorStore:
         # from multiple Python threads, causing SIGSEGV crashes.
         self._lock = threading.Lock()
 
+        # Event signalling that initialization (and optionally the first
+        # reindex) is complete.  Background threads that access the vector
+        # store should call wait_until_ready() before their first operation.
+        self._ready = threading.Event()
+
         # Ensure the persist directory exists
         self.persist_directory.mkdir(parents=True, exist_ok=True)
 
-        # Initialize ChromaDB client
-        self.client = chromadb.PersistentClient(
-            path=str(self.persist_directory),
-            settings=Settings(anonymized_telemetry=False, allow_reset=True),
-        )
+        # All ChromaDB operations during init are protected by the lock so
+        # that any early background thread that slips through will block
+        # rather than hit the Rust bindings concurrently.
+        with self._lock:
+            # Initialize ChromaDB client
+            self.client = chromadb.PersistentClient(
+                path=str(self.persist_directory),
+                settings=Settings(anonymized_telemetry=False, allow_reset=True),
+            )
 
         # Initialize the embedding model using the factory
         try:
@@ -57,47 +66,57 @@ class VectorStore:
                 f"Initialized embedding model: "
                 f"{embedding_config.provider}/{embedding_config.model_name}"
             )
-            
+
             # Determine embedding dimension
             # We generate a dummy embedding to determine the dimension
             dummy_embedding = self.embedding_model.encode(["test_dimension_check"])[0]
             self.embedding_dimension = len(dummy_embedding)
             logger.debug(f"Detected embedding dimension: {self.embedding_dimension}")
-            
+
         except Exception as e:
             logger.error(f"Failed to load embedding model: {e}")
             raise
 
-        # Get or create the collection
-        try:
-            self.collection = self.client.get_collection(name=self.collection_name)
-            logger.info(f"Loaded existing collection: {self.collection_name}")
-            
-            # Check for dimension mismatch if collection is not empty
-            if self.collection.count() > 0:
-                result = self.collection.get(limit=1, include=["embeddings"])
-                if result["embeddings"] is not None and len(result["embeddings"]) > 0:
-                    existing_dim = len(result["embeddings"][0])
-                    if existing_dim != self.embedding_dimension:
-                        logger.warning(
-                            f"Dimension mismatch detected! Existing collection has dimension {existing_dim}, "
-                            f"but current model produces {self.embedding_dimension}. "
-                            f"Recreating collection '{self.collection_name}'..."
-                        )
-                        self.client.delete_collection(name=self.collection_name)
-                        self.collection = self.client.create_collection(
-                            name=self.collection_name,
-                            metadata={"description": "Obsidian vault document chunks"},
-                        )
-                        logger.info(f"Recreated collection: {self.collection_name}")
-                        
-        except chromadb.errors.NotFoundError:
-            # Collection doesn't exist, create it
-            self.collection = self.client.create_collection(
-                name=self.collection_name,
-                metadata={"description": "Obsidian vault document chunks"},
-            )
-            logger.info(f"Created new collection: {self.collection_name}")
+        # Get or create the collection (under lock)
+        with self._lock:
+            try:
+                self.collection = self.client.get_collection(name=self.collection_name)
+                logger.info(f"Loaded existing collection: {self.collection_name}")
+
+                # Check for dimension mismatch if collection is not empty
+                if self.collection.count() > 0:
+                    result = self.collection.get(limit=1, include=["embeddings"])
+                    if result["embeddings"] is not None and len(result["embeddings"]) > 0:
+                        existing_dim = len(result["embeddings"][0])
+                        if existing_dim != self.embedding_dimension:
+                            logger.warning(
+                                f"Dimension mismatch detected! Existing collection has dimension {existing_dim}, "
+                                f"but current model produces {self.embedding_dimension}. "
+                                f"Recreating collection '{self.collection_name}'..."
+                            )
+                            self.client.delete_collection(name=self.collection_name)
+                            self.collection = self.client.create_collection(
+                                name=self.collection_name,
+                                metadata={"description": "Obsidian vault document chunks"},
+                            )
+                            logger.info(f"Recreated collection: {self.collection_name}")
+
+            except chromadb.errors.NotFoundError:
+                # Collection doesn't exist, create it
+                self.collection = self.client.create_collection(
+                    name=self.collection_name,
+                    metadata={"description": "Obsidian vault document chunks"},
+                )
+                logger.info(f"Created new collection: {self.collection_name}")
+
+    def mark_ready(self) -> None:
+        """Signal that the vector store is ready for concurrent access."""
+        self._ready.set()
+        logger.info("VectorStore marked as ready.")
+
+    def wait_until_ready(self, timeout: float | None = None) -> bool:
+        """Block until the vector store is ready. Returns True if ready."""
+        return self._ready.wait(timeout=timeout)
 
     def add_chunks(self, chunks: List[Dict[str, Any]]) -> None:
         """Add document chunks to the vector store.

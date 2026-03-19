@@ -146,6 +146,9 @@ async def initialize_service_from_args(
             logger.info("Background vault indexing completed.")
         except Exception as e:
             logger.error(f"Background indexing failed: {e}", exc_info=True)
+        finally:
+            # Signal readiness even on failure so waiters don't hang forever.
+            vector_store.mark_ready()
 
     import threading
     threading.Thread(target=_sync_reindex, daemon=True).start()
