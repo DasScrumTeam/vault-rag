@@ -1,6 +1,8 @@
 """Vector store management for document embeddings and semantic search."""
 
 import logging
+import subprocess
+import sys
 import threading
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Union, cast
@@ -12,6 +14,49 @@ from components.vault_service.models import ChunkMetadata
 from shared.config import EmbeddingModelConfig
 
 logger = logging.getLogger(__name__)
+
+
+def _preflight_check_collection(db_path: str, collection_name: str) -> bool:
+    """Run a quick collection.count() in a subprocess.
+
+    If the ChromaDB Rust bindings hit corrupt data they crash with SIGSEGV,
+    which cannot be caught in-process.  By running the probe in a short-lived
+    subprocess we can detect the crash and recover (delete + recreate) instead
+    of taking down the whole MCP server.
+
+    Returns True if the collection is healthy, False if it crashed or errored.
+    """
+    script = (
+        "import sys, chromadb\n"
+        "from chromadb.config import Settings\n"
+        f"c = chromadb.PersistentClient(path={db_path!r},\n"
+        "    settings=Settings(anonymized_telemetry=False, allow_reset=True))\n"
+        "try:\n"
+        f"    col = c.get_collection({collection_name!r})\n"
+        "    col.count()\n"
+        "except Exception:\n"
+        "    pass\n"  # NotFoundError etc. are fine — not corrupt
+    )
+    try:
+        result = subprocess.run(
+            [sys.executable, "-c", script],
+            timeout=30,
+            capture_output=True,
+        )
+        if result.returncode < 0 or result.returncode == 139:
+            logger.error(
+                "ChromaDB preflight check crashed (exit %d). "
+                "Collection data is likely corrupt.",
+                result.returncode,
+            )
+            return False
+        return True
+    except subprocess.TimeoutExpired:
+        logger.error("ChromaDB preflight check timed out.")
+        return False
+    except Exception as e:
+        logger.error(f"ChromaDB preflight check failed: {e}")
+        return False
 
 
 class VectorStore:
@@ -76,6 +121,25 @@ class VectorStore:
         except Exception as e:
             logger.error(f"Failed to load embedding model: {e}")
             raise
+
+        # Preflight: probe the collection in a subprocess so a SIGSEGV from
+        # corrupt Rust index data doesn't kill the MCP server.
+        if not _preflight_check_collection(
+            str(self.persist_directory), self.collection_name
+        ):
+            logger.warning(
+                "Corrupt collection detected. Deleting database and recreating."
+            )
+            with self._lock:
+                self.client.reset()
+                self.collection = self.client.create_collection(
+                    name=self.collection_name,
+                    metadata={"description": "Obsidian vault document chunks"},
+                )
+                logger.info(
+                    "Database reset and collection recreated after corruption."
+                )
+            return  # skip dimension check — collection is empty
 
         # Get or create the collection (under lock)
         with self._lock:
