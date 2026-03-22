@@ -34,8 +34,10 @@ def _preflight_check_collection(db_path: str, collection_name: str) -> bool:
         "try:\n"
         f"    col = c.get_collection({collection_name!r})\n"
         "    col.count()\n"
-        "except Exception:\n"
-        "    pass\n"  # NotFoundError etc. are fine — not corrupt
+        "except chromadb.errors.NotFoundError:\n"
+        "    pass\n"  # Collection doesn't exist yet — that's fine
+        # Any other exception (InternalError, etc.) propagates and
+        # causes a non-zero exit code, which we treat as corruption.
     )
     try:
         result = subprocess.run(
@@ -43,11 +45,11 @@ def _preflight_check_collection(db_path: str, collection_name: str) -> bool:
             timeout=30,
             capture_output=True,
         )
-        if result.returncode < 0 or result.returncode == 139:
+        if result.returncode != 0:
             logger.error(
-                "ChromaDB preflight check crashed (exit %d). "
-                "Collection data is likely corrupt.",
+                "ChromaDB preflight check failed (exit %d): %s",
                 result.returncode,
+                result.stderr.decode(errors="replace").strip()[-500:],
             )
             return False
         return True
