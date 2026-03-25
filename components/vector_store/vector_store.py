@@ -1,6 +1,7 @@
 """Vector store management for document embeddings and semantic search."""
 
 import logging
+import os
 import subprocess
 import sys
 import threading
@@ -27,8 +28,12 @@ def _preflight_check_collection(db_path: str, collection_name: str) -> bool:
     Returns True if the collection is healthy, False if it crashed or errored.
     """
     script = (
-        "import sys, chromadb\n"
+        "import os, sys, resource, chromadb\n"
         "from chromadb.config import Settings\n"
+        # Suppress macOS crash reporter dialog for this subprocess.
+        # RLIMIT_CORE=0 prevents core dumps; the crash is expected and
+        # handled by the parent process.
+        "resource.setrlimit(resource.RLIMIT_CORE, (0, 0))\n"
         f"c = chromadb.PersistentClient(path={db_path!r},\n"
         "    settings=Settings(anonymized_telemetry=False, allow_reset=True))\n"
         "try:\n"
@@ -39,11 +44,15 @@ def _preflight_check_collection(db_path: str, collection_name: str) -> bool:
         # Any other exception (InternalError, etc.) propagates and
         # causes a non-zero exit code, which we treat as corruption.
     )
+    env = os.environ.copy()
+    # Tell macOS CrashReporter to skip the dialog for this child.
+    env["__XPC_CRASH_REPORTER_ENABLED"] = "0"
     try:
         result = subprocess.run(
             [sys.executable, "-c", script],
             timeout=30,
             capture_output=True,
+            env=env,
         )
         if result.returncode != 0:
             logger.error(
